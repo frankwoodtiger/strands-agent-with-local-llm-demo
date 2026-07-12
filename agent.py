@@ -1,3 +1,5 @@
+import uuid
+
 from strands import Agent, tool
 from strands.models import OpenAIModel
 
@@ -30,15 +32,43 @@ local_qwen_model = OpenAIModel(
     }
 )
 
+# Tight instructions to keep the 2B model focused
+system_prompt = (
+    "You are a precise, silent background assistant. "
+    "When you need to use a tool, execute it immediately. "
+    "NEVER write out or print your internal thoughts, plans, or reasoning steps to the user. "
+    "Only provide the final answer text after the tool execution completes."
+)
+
 # Create an agent with tools from the community-driven strands-tools package
 # as well as our custom letter_counter tool
 agent = Agent(
     model=local_qwen_model,
+    system_prompt=system_prompt,
     tools=[letter_counter]
 )
 
 # Ask the agent a question that uses the available tools
-message = """
-Tell me how many letter R's are in the word "strawberry" 🍓
-"""
-agent(message)
+def strawberry_prompt_test(agent):
+    message = """
+    Tell me how many letter R's are in the word "strawberry" 🍓
+    """
+    agent(message)
+
+def run_agent_session():
+    session_key = str(uuid.uuid4())
+    invocation_state = {
+        "conversation_id": session_key,
+        "session_id": session_key
+    }
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() == 'exit':
+            break
+            
+        # Pass the session_id so the agent remembers previous turns
+        response = agent(user_input, invocation_state=invocation_state)
+        print(f"\nAgent: {response}\n")
+
+if __name__ == "__main__":
+    run_agent_session()
